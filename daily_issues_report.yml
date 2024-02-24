@@ -1,0 +1,13 @@
+- name: Get unresolved issues from GitHub
+  id: issues
+  run: |
+    # ここでGitHub APIを使って未解決のIssueを取得し、リストを出力する
+    # 以下はPythonスクリプトの一例です（実際にはGitHubトークンとリポジトリ名を設定する必要があります）
+    echo "::set-output name=list::$(python3 -c 'import requests; \
+      headers = {"Authorization": "token ${GITHUB_TOKEN}"}; \
+      response = requests.get("https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open", headers=headers); \
+      issues = response.json(); \
+      issue_list = "\n".join(["- [#" + str(issue["number"]) + "](" + issue["html_url"] + "): " + issue["title"] for issue in issues]); \
+      print(issue_list)')"
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
