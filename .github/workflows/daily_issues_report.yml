@@ -14,7 +14,7 @@ jobs:
       - name: Get unresolved issues from GitHub
   run: |
     echo "Fetching unresolved issues from GitHub"
-    ISSUES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/owner/repo/issues?state=open")
+    ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN  }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open")
     ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
     echo "::set-output name=issues_list::${ISSUES_LIST}"
 
