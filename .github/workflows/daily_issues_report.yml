@@ -13,18 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Get unresolved issues from GitHub
-        run: |
-          echo "Fetching unresolved issues from GitHub"
-          ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open")
-          ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
-          echo "::set-output name=issues_list::$ISSUES_LIST"
+ - name: Get Issues for Each Branch
+  run: |
+    echo "Fetching issues for each branch..."
+    BRANCHES=$(git branch -r | sed 's/origin\///') # リモートブランチのリストを取得
+    for branch in $BRANCHES; do
+      ISSUES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=$branch")
+      if [ "$ISSUES" != "[]" ]; then # イシューがある場合のみ処理
+        ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
+        SLACK_MESSAGE+="*${branch}*\n$ISSUES_LIST\n"
+      fi
+    done
+    echo $SLACK_MESSAGE > issues.txt # 後のステップで使用するためにファイルに書き出す
 
-      - name: Post to Slack
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: 'repo,message,commit,author,action,eventName,ref,workflow'
-          text: ${{ steps.get_issues.outputs.issues_list }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+- name: Post to Slack
+  uses: 8398a7/action-slack@v3
+  with:
+    status: ${{ job.status }}
+    fields: 'repo,message,commit,author,action,eventName,ref,workflow'
+    text: $(cat issues.txt) # ファイルからテキストを読み込む
+  env:
+    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
