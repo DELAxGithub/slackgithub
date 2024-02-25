@@ -2,16 +2,15 @@ name: Daily Issues Report
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 毎日UTCの00:00（日本時間で午前9時に相当）に実行
-  workflow_dispatch: # これを追加する
+    - cron: '0 0 * * *' # Executes at 00:00 UTC (09:00 JST)
+  workflow_dispatch: # This allows manual triggering of the workflow
 
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-      - uses: actions/checkout@v2
-
+        uses: actions/checkout@v2 # Make sure to have the uses attribute under the step
 
       - name: Get Issues for Each Branch
         run: |
@@ -19,23 +18,24 @@ jobs:
           BRANCHES=$(git branch -r | sed 's/origin\///') # Get a list of remote branches
           SLACK_MESSAGE=""
           for branch in $BRANCHES; do
-          ISSUES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
-          if [ "$ISSUES" != "[]" ]; then # If there are issues, process them
-          ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
-          SLACK_MESSAGE+="$branch\n$ISSUES_LIST\n"
-          fi
-            done
+            ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
+            if [ "$ISSUES" != "[]" ]; then # If there are issues, process them
+              ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
+              SLACK_MESSAGE+="$branch\n$ISSUES_LIST\n"
+            fi
+          done
+          if [ -n "$SLACK_MESSAGE" ]; then
             echo "SLACK_MESSAGE<<EOF" >> $GITHUB_ENV
             echo -e "$SLACK_MESSAGE" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
-
+          fi
 
       - name: Post to Slack
-        if: ${{ env.SLACK_MESSAGE != '' }} # SLACK_MESSAGEが空でない場合のみ実行
+        if: env.SLACK_MESSAGE != '' # Only run if SLACK_MESSAGE is not empty
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
           fields: 'repo,message,commit,author,action,eventName,ref,workflow'
-          text: ${{ env.SLACK_MESSAGE }} # 環境変数を使用
+          text: ${{ env.SLACK_MESSAGE }} # Use the environment variable
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
