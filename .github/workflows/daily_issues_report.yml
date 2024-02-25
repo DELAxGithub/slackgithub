@@ -10,20 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+
 
       - name: Get Issues for Each Branch
         run: |
           echo "Fetching issues for each branch..."
-          BRANCHES=$(git branch -r | sed 's/origin\///') # リモートブランチのリストを取得
+          BRANCHES=$(git branch -r | sed 's/origin\///') # Get a list of remote branches
+          SLACK_MESSAGE=""
           for branch in $BRANCHES; do
-            ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
-            if [ "$ISSUES" != "[]" ]; then # イシューがある場合のみ処理
-              ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
-              SLACK_MESSAGE+="*${branch}*\n$ISSUES_LIST\n"
-            fi
-          done
-          echo "$SLACK_MESSAGE" > $GITHUB_ENV
+          ISSUES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
+          if [ "$ISSUES" != "[]" ]; then # If there are issues, process them
+          ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
+          SLACK_MESSAGE+="$branch\n$ISSUES_LIST\n"
+          fi
+            done
+            echo "SLACK_MESSAGE<<EOF" >> $GITHUB_ENV
+            echo -e "$SLACK_MESSAGE" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+
 
       - name: Post to Slack
         if: ${{ env.SLACK_MESSAGE != '' }} # SLACK_MESSAGEが空でない場合のみ実行
