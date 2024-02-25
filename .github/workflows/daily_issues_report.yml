@@ -10,32 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2 # Make sure to have the uses attribute under the step
+        uses: actions/checkout@v2
 
-      - name: Get Issues for Each Branch
+      - name: Get unresolved issues from GitHub
+        id: get_issues
         run: |
-          echo "Fetching issues for each branch..."
-          BRANCHES=$(git branch -r | sed 's/origin\///') # Get a list of remote branches
-          SLACK_MESSAGE=""
-          for branch in $BRANCHES; do
-            ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
-            if [ "$ISSUES" != "[]" ]; then # If there are issues, process them
-              ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
-              SLACK_MESSAGE+="$branch\n$ISSUES_LIST\n"
-            fi
-          done
-          if [ -n "$SLACK_MESSAGE" ]; then
-            echo "SLACK_MESSAGE<<EOF" >> $GITHUB_ENV
-            echo -e "$SLACK_MESSAGE" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-          fi
+          echo "Fetching unresolved issues from GitHub..."
+          ISSUES=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" "https://api.github.com/repos/DELAxGithub/slackgithub/issues?state=open&labels=$branch")
+          ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | select(.state == "open") | "- [" + .title + "](" + .html_url + ")"')
+          echo "$ISSUES_LIST" > issues_list.txt
+
+      - name: Read and format issue list
+        id: format_issues
+        run: |
+          ISSUE_MESSAGES=$(cat issues_list.txt)
+          echo "Formatted issue list: $ISSUE_MESSAGES"
+          echo "ISSUE_MESSAGES<<EOF" >> $GITHUB_ENV
+          echo "$ISSUE_MESSAGES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Post to Slack
-        if: env.SLACK_MESSAGE != '' # Only run if SLACK_MESSAGE is not empty
+        if: env.ISSUE_MESSAGES != ''
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
           fields: 'repo,message,commit,author,action,eventName,ref,workflow'
-          text: ${{ env.SLACK_MESSAGE }} # Use the environment variable
+          text: ${{ env.ISSUE_MESSAGES }} # Use the environment variable
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
