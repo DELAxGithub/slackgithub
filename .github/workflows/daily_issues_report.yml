@@ -1,0 +1,26 @@
+name: Daily Issues Report
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 毎日UTCの00:00（日本時間で午前9時に相当）に実行
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get unresolved issues from GitHub
+        run: |
+          # GitHub APIを使用して未解決のIssueを取得するスクリプトを記述
+          # 出力を次のステップで使用するために、結果をechoコマンドでセットアウトプットする
+
+      - name: Post to Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: 'repo,message,commit,author,action,eventName,ref,workflow'
+          text: "ここにIssuesリストが入ります"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
