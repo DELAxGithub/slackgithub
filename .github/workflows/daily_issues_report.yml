@@ -3,6 +3,8 @@ name: Daily Issues Report
 on:
   schedule:
     - cron: '0 0 * * *' # 毎日UTCの00:00（日本時間で午前9時に相当）に実行
+  workflow_dispatch: # これを追加する
+
 
 jobs:
   report:
