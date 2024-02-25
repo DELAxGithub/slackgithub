@@ -12,9 +12,12 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Get unresolved issues from GitHub
-        run: |
-          # GitHub APIを使用して未解決のIssueを取得するスクリプトを記述
-          # 出力を次のステップで使用するために、結果をechoコマンドでセットアウトプットする
+  run: |
+    echo "Fetching unresolved issues from GitHub"
+    ISSUES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/owner/repo/issues?state=open")
+    ISSUES_LIST=$(echo "$ISSUES" | jq -r '.[] | "- [" + .title + "](" + .html_url + ")"')
+    echo "::set-output name=issues_list::${ISSUES_LIST}"
+
 
       - name: Post to Slack
         uses: 8398a7/action-slack@v3
